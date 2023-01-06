@@ -1,9 +1,11 @@
-﻿using System;
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
-
+using System.Runtime.CompilerServices;
 
 Console.WriteLine("Yildiray Kocak");
+Console.WriteLine("MongoDB CRUD Operations");
+
 #region Create a new document
 // Insert Data in Database
 
@@ -46,7 +48,10 @@ Console.WriteLine("Yildiray Kocak");
 
 //var collection = DbConnection.GetUserCollection();
 //var documents = collection.Find(new BsonDocument()).ToList();
-//Console.WriteLine(documents);
+//foreach (var item in documents)
+//{
+//    global::System.Console.WriteLine(item.ToString());
+//}
 
 #endregion
 
@@ -103,7 +108,7 @@ Console.WriteLine("Yildiray Kocak");
 #endregion
 
 //var collection = DbConnection.GetUserCollection();
-//var scoresTypeFilter = Builders<BsonDocument>.Filter.Eq("student_id", 2 ) & Builders<BsonDocument>.Filter.Eq("scores.type", "quiz");
+//var scoresTypeFilter = Builders<BsonDocument>.Filter.Eq("student_id", 2) & Builders<BsonDocument>.Filter.Eq("scores.type", "quiz");
 //var scoresTypeScoreUpdate = Builders<BsonDocument>.Update.Set("scores.$.score", 84.92381029342834);
 //collection.UpdateOne(scoresTypeFilter, scoresTypeScoreUpdate);
 
@@ -117,9 +122,98 @@ Console.WriteLine("Yildiray Kocak");
 
 #endregion
 
+#region Create a new document based on a Class
+
+//List<BScore> scores2 = new()
+//{
+//    new BScore{ Type = "exam",Score = 100 },
+//    new BScore{ Type = "quiz", Score = 23 },
+//    new BScore{ Type = "homework", Score = 34 },
+//    new BScore{ Type = "efe", Score = 53 }
+//};
+
+//Student student = new()
+//{
+//    ClassId = 500,
+//    StudentId = 2,
+//    Scores = scores2
+//};
+
+//var collection = DbConnection.GetUserCollection();
+//collection.InsertOne(student.ToBsonDocument());
+
+#endregion
+
+#region Read a document with filter on Class
+
+//var collection = DbConnection.GetUserCollectionStudent();
+//var filter = Builders<Student>.Filter.Eq(x => x.ClassId, 500);
+//var result = collection.Find(filter).FirstOrDefault();
+
+//foreach (var item in result.Scores)
+//{
+//    global::System.Console.WriteLine("Type : " + item.Type + " Score : " + item.Score);
+//}
+
+#endregion
+
+#region Complicated Filter Example With Class
+
+//var collection = DbConnection.GetUserCollectionStudent();
+//var examScoreFilter = Builders<Student>.Filter.ElemMatch<BScore>(x => x.Scores, x => x.Type == "exam" && x.Score >= 70); // Ana obje, donulecek obje tipi /// Elem Match icin array icindeki objenin tipi verilmeli.
+//var result = collection.Find(examScoreFilter).ToCursor();
+
+//foreach (var item in result.ToEnumerable())
+//{
+//    global::System.Console.WriteLine(item.StudentId);
+//}
+
+#endregion
+
+#region Update a document based on a Class
+
+//var collection = DbConnection.GetUserCollectionStudent();
+//var filter = Builders<Student>.Filter.Eq(x => x.StudentId, 2);
+//var update = Builders<Student>.Update.Set(x => x.ClassId, 485);
+//var student_value = collection.Find(filter).FirstOrDefault();
+//Console.WriteLine(student_value.ClassId);
+//collection.UpdateOne(filter, update);
+//var student_updated_value = collection.Find(filter).FirstOrDefault();
+//Console.WriteLine(student_updated_value.ClassId);
+
+#endregion
+
+#region Update inside of array based on a Class
+
+//var collection = DbConnection.GetUserCollectionStudent();
+//var studentIdFilter = Builders<Student>.Filter.Eq(x => x.StudentId, 2);
+//var examScoreFilter = Builders<Student>.Filter.ElemMatch(x => x.Scores, x=> x.Type == "exam");
+//var combinedFilter = Builders<Student>.Filter.And(studentIdFilter, examScoreFilter);
+//var update = Builders<Student>.Update.Set("Scores.$.Score", 50);
+//collection.UpdateOne(combinedFilter, update);
+
+#endregion
+
+#region Delete a document based on a Class
+
+//var collection = DbConnection.GetUserCollectionStudent();
+//var filter = Builders<Student>.Filter.Eq(x => x.StudentId, 2);
+//collection.DeleteOne(filter);
+
+#endregion
 
 public static class DbConnection
 {
+    public static IMongoCollection<Student> GetUserCollectionStudent()
+    {
+        var settings = MongoClientSettings.FromConnectionString("mongodb://localhost:27017/");
+        settings.ServerApi = new ServerApi(ServerApiVersion.V1);
+        var client = new MongoClient(settings);
+        var database = client.GetDatabase("FirstTry");
+        var collection = database.GetCollection<Student>("User");
+        return collection;
+    }
+    
     public static IMongoCollection<BsonDocument> GetUserCollection()
     {
         var settings = MongoClientSettings.FromConnectionString("mongodb://localhost:27017/");
@@ -139,5 +233,26 @@ public static class DbConnection
     }
 }
 
+public class Student
+{
+    [BsonId]
+    public ObjectId Id { get; set; }
 
+    [BsonElement(nameof(StudentId))]
+    public int StudentId { get; set; }
 
+    [BsonElement(nameof(Scores))]
+    public List<BScore> Scores { get; set; }
+
+    [BsonElement(nameof(ClassId))]
+    public int ClassId { get; set; }
+}
+
+public class BScore
+{
+    [BsonElement(nameof(Type))]
+    public string Type { get; set; }
+
+    [BsonElement(nameof(Score))]
+    public double Score { get; set; }
+}
